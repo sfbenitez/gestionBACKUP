@@ -8,9 +8,10 @@
 # Los demás días se realizarán copias diferenciales partiendo de la última copia incremental o completa en el caso de los días del 1-6.
 
 : ${DATE:=$(date +'%Y-%m-%d')}             # Variable para Fecha.
-: ${DAY:=$(date +'%d')}
+: ${DAY:=$(date +'%d')}			   # Variable para el día.
+: ${MONTH:=$(date +'%b')}		   # Variable para el mes.
 : ${TIME:=$(date +'%R')}                   # Variable para Hora.
-: ${WORK_DIR:=/home/backup/$DATE}               # Directorio de trabajo actual.
+: ${WORK_DIR:=/home/backup/$DATE}          # Directorio de trabajo actual.
 : ${LOG_FILE:=$WORK_DIR/record.log}        # Archivo de log.
 : ${ADMIN:=sergioferretebenitez@gmail.com} # Email de Administrador
 
@@ -23,13 +24,18 @@ fi;
 
 # Dia 1 de cada mes, copia completa del sistema.
 
-if $DAY =="1" ;
+if $DAY =="01" ;
 then
 	# Backup del MBR
 	dd if=/dev/sda of=$WORK_DIR/sdabk.mbr count=1 bs=512
+	# Borrar fichero .snap del mes anterior si existe.
+	# TODO
 	# Backup del sistema, excluyendo los directorios que el sistema modifica durante el arranque y el propio $WORK_DIR
-	tar -cvpzf $WORK_DIR/backup-completa-$HOSTNAME-$DATE.tgz --exclude=$WORK_DIR --exclude=/lost+found --exclude=/dev --exclude=/proc --exclude=/sys -g $WORK_DIR/$DATE.snap /’
-elif $DAY == "7" || $DAY == "14" || $DAY == "21" || $DAY == "28" ;
+	tar -cvpzf $WORK_DIR/backup-completa-$HOSTNAME-$DATE.tgz --exclude=$WORK_DIR --exclude=/lost+found --exclude=/dev --exclude=/proc --exclude=/sys -g $WORK_DIR/$MONTH.snap /’
+elif $DAY == "07" || $DAY == "14" || $DAY == "21" || $DAY == "28" ;
 then
 	# Copia incremental de los directorios importantes en mi caso.
-	tar -cvpzf $WORK_DIR/backup-inc-$HOSTNAME-$DATE.tgz -g 
+	tar -cvpzf $WORK_DIR/backup-inc-$HOSTNAME-$DATE.tgz -g $WORK_DIR/$MONTH.snap \
+	/etc/ \
+	/home/ferrete/ \
+	/
