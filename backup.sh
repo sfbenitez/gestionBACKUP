@@ -25,7 +25,7 @@
 STATUS:=200
 
 # Comprobando si existe el directorio de trabajo.
-if ! -d "$WORK_DIR" ;
+if [ ! -d "$WORK_DIR" ] ;
 then
 	mkdir -p $WORK_DIR;
 	# TODO check si se crea correctamente.
@@ -55,12 +55,12 @@ then
 	then
 		echo "Error al comprimir la copia final."
 		STATUS=400
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
 	else
 		echo "Copia COMPLETA creada correctamente."
 		STATUS=200
 		rm -f backup-completa-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
 	fi
 	# Fichero indicando hora exacta de la copia para las copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
@@ -71,10 +71,7 @@ then
 	tar -cvpf backup-inc-$HOSTNAME-$DATE.tar -g ../$MONTH.snap \
 		/etc/ \
 		/root/ \
-		/home/ferrete/ \
 		/var/log/ \
-		/var/cache/bind/ \ # DNS Mickey
-		/var/www/ \
 		/var/lib/ > $LOG_FILE
 	# Añadir lista de paquetes instalados
 	dpkg --get-selections > paquetes_instalados.txt
@@ -83,13 +80,13 @@ then
 	if [ "$?" -ne "0" ]
 	then
 		echo "Error al comprimir la copia final."
-		STATUS=400
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS values ('sergio.ferrete', '$IPMICKEY','backup-inc-$HOSTNAME-$DATE.tar.gz','Copia incremental de $HOSTNAME', '$STATUS', 'Automatica')"
+		STATUS=100
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-inc-$HOSTNAME-$DATE.tar.gz','Copia incremental de $HOSTNAME', '$STATUS', 'Automatica')"
 	else
 		echo "Copia INCREMENTAL creada correctamente."
 		STATUS=200
 		rm -f backup-inc-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS values ('sergio.ferrete', '$IPMICKEY','backup-inc-$HOSTNAME-$DATE.tar.gz','Copia incremental de $HOSTNAME', '$STATUS', 'Automatica')"
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-inc-$HOSTNAME-$DATE.tar.gz','Copia incremental de $HOSTNAME', '$STATUS', 'Automatica')"
 	fi
 	# Fichero indicando hora exacta de la copia para las copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
@@ -98,21 +95,18 @@ else
 	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt \
 	/etc/ \
 	/root/ \
-	/home/ferrete/ \
 	/var/log/ \
-	/var/cache/bind/ \ # DNS Mickey
-	/var/www/ \
 	/var/lib/ > $LOG_FILE
 	if [ "$?" -ne "0" ]
 	then
 		echo "Error al crear la copia final."
-		STATUS=400
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
+		STATUS=100
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
 	else
 		echo "Copia DIFERENCIAL creada correctamente."
 		STATUS=200
 		rm -f backup-dif-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
 	fi
 	# Fichero indicando hora exacta de la copia para las siguientes copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
