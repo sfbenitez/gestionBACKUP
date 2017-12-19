@@ -39,7 +39,7 @@ then
 	exit 1
 fi
 # Dia 1 de cada mes, copia completa del sistema.
-if [ "$DAY" =="01" ]
+if [ "$DAY" == "01" ]
 then
 	# Backup del MBR
 	dd if=/dev/sda of=sdabk.mbr count=1 bs=512
