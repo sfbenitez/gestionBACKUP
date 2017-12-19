@@ -46,7 +46,7 @@ then
 	# Borrar fichero .snap del mes anterior si existe.
 	rm -f ../*.snap
 	# Backup del sistema, excluyendo los directorios que el sistema modifica durante el arranque y el propio $WORK_DIR
-	tar -cvpzf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup --exclude=/lost+found --exclude=/dev --exclude=/proc --exclude=/sys -g ../$MONTH.snap /
+	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup --exclude=/lost+found --exclude=/dev --exclude=/proc --exclude=/sys -g ../$MONTH.snap /
 	# Añadir lista de paquetes instalados y MBR
 	dpkg --get-selections > paquetes_instalados.txt
 	tar -rvf backup-completa-$HOSTNAME-$DATE.tar paquetes_instalados.txt sdabk.mbr
@@ -69,7 +69,7 @@ elif [ "$DAY" == "07" ] || [ "$DAY" == "14" ] || [ "$DAY" == "21" ] || [ "$DAY" 
 then
 	# Copia incremental de los directorios importantes en mi caso.
 	tar -cvpf backup-inc-$HOSTNAME-$DATE.tar -g ../$MONTH.snap --exclude=/root/backup \
-		/etc root var/log/ var/lib > $LOG_FILE
+		/etc /root /var/log /var/lib > $LOG_FILE
 	# Añadir lista de paquetes instalados
 	dpkg --get-selections > paquetes_instalados.txt
 	tar -rvf backup-inc-$HOSTNAME-$DATE.tar paquetes_instalados.txt $LOG_FILE
