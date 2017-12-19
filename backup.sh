@@ -46,7 +46,7 @@ then
 	# Borrar fichero .snap del mes anterior si existe.
 	rm -f ../*.snap
 	# Backup del sistema, excluyendo los directorios que el sistema modifica durante el arranque y el propio $WORK_DIR
-	tar -cvpzf backup-completa-$HOSTNAME-$DATE.tar --exclude=$WORK_DIR --exclude=/lost+found --exclude=/dev --exclude=/proc --exclude=/sys -g ../$MONTH.snap /
+	tar -cvpzf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup --exclude=/lost+found --exclude=/dev --exclude=/proc --exclude=/sys -g ../$MONTH.snap /
 	# Añadir lista de paquetes instalados y MBR
 	dpkg --get-selections > paquetes_instalados.txt
 	tar -rvf backup-completa-$HOSTNAME-$DATE.tar paquetes_instalados.txt sdabk.mbr
@@ -68,11 +68,8 @@ then
 elif [ "$DAY" == "07" ] || [ "$DAY" == "14" ] || [ "$DAY" == "21" ] || [ "$DAY" == "28" ]
 then
 	# Copia incremental de los directorios importantes en mi caso.
-	tar -cvpf backup-inc-$HOSTNAME-$DATE.tar -g ../$MONTH.snap \
-		/etc/ \
-		/root/ \
-		/var/log/ \
-		/var/lib/ > $LOG_FILE
+	tar -cvpf backup-inc-$HOSTNAME-$DATE.tar -g ../$MONTH.snap --exclude=/root/backup \
+		/etc root var/log/ var/lib > $LOG_FILE
 	# Añadir lista de paquetes instalados
 	dpkg --get-selections > paquetes_instalados.txt
 	tar -rvf backup-inc-$HOSTNAME-$DATE.tar paquetes_instalados.txt $LOG_FILE
@@ -92,11 +89,8 @@ then
 	date > ../date-last-backup.txt # /root/backup
 else
 	# Copia diferencial respecto al día anterior
-	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt \
-	/etc/ \
-	/root/ \
-	/var/log/ \
-	/var/lib/ > $LOG_FILE
+	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt --exclude=/root/backup \
+	/etc /root /var/log /var/lib > $LOG_FILE
 	if [ "$?" -ne "0" ]
 	then
 		echo "Error al crear la copia final."
