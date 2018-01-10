@@ -24,7 +24,7 @@
 #											/var/lib/prometheus
 
 # STATIC PARAMS
-: ${PGPASSFILE:=/root/.pgpass}										# passfile para postgresql
+: ${PGPASSFILE:=/root/.pgpass}										# passfile para postgresql 172.22.200.110:5432:db_backup:sergio.ferrete:passwd
 : ${DATE:=$(date +'%Y-%m-%d')}             				# Variable para Fecha.
 : ${DAY:=$(date +'%a')}														# Variable para el día.
 : ${YESTERDAY:=$(date --date="yesterday" +'%d')}	# Variable para el día anterior.
@@ -59,19 +59,17 @@ fi
 # Todos los Lunes de cada semana, copia completa.
 if [ "$DAY" == "Mon" ]
 then
-	# Borrar fichero .snap de la semana anterior anterior si existe.
-	rm -f ../*.snap
-	# Backup del sistema, excluyendo $WORK_DIR
-	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup -g ../Monday-$DATE.snap \
-		/root /home \
-		/etc \
-		/var/log \
-		/var/cache/bind /var/lib/ldap /srv /var/www /var/lib/grafana /var/lib/prometheus /var/lib/postgresql
-
-	# Añadir lista de paquetes instalados
+	# lista de paquetes instalados y mbr
 	dpkg --get-selections > paquetes_instalados.txt
-	tar -rvf backup-completa-$HOSTNAME-$DATE.tar paquetes_instalados.txt
-	gzip -8f backup-completa-$HOSTNAME-$DATE.tar
+	dd if=/dev/vda of=vdabk.mbr count=1 bs=512
+	# Backup del sistema, excluyendo $WORK_DIR
+	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup  \
+	paquetes_instalados.txt vdabk.mbr \
+	/root /home \
+	/etc \
+	/var/log \
+	/var/cache/bind /var/lib/ldap /srv /var/www /usr/local/bin \
+	/var/lib/grafana /var/lib/prometheus /var/lib/postgresql /usr/local/sbin > $LOG_FILE
 	if [ "$?" -ne "0" ]
 	then
 		echo "Error al comprimir la copia final."
@@ -89,7 +87,13 @@ then
 else
 	# Copia diferencial respecto al día anterior
 	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt --exclude=/root/backup \
-	/etc /root /var/log /var/lib > $LOG_FILE
+	paquetes_instalados.txt vdabk.mbr \
+	/root /home \
+	/etc \
+	/var/log \
+	/var/cache/bind /var/lib/ldap /srv /var/www /usr/local/bin \
+	/var/lib/grafana /var/lib/prometheus /var/lib/postgresql /usr/local/sbin > $LOG_FILE
+
 	if [ "$?" -ne "0" ]
 	then
 		echo "Error al crear la copia final."
