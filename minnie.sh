@@ -37,7 +37,7 @@
 
 
 # VARS
-STATUS:=200
+STATUS=200
 
 # Comprobando si existe el directorio de trabajo.
 if [ ! -d "$WORK_DIR" ] ;
@@ -47,6 +47,7 @@ then
 	then
 		echo "No se ha podido crear el directorio de trabajo."
 		exit 1
+	fi
 fi;
 
 # Cambiar al directorio
