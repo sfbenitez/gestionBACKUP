@@ -63,8 +63,11 @@ then
 	# lista de paquetes instalados y mbr
 	dpkg --get-selections > paquetes_instalados.txt
 	dd if=/dev/vda of=vdabk.mbr count=1 bs=512
-	# Backup del sistema, excluyendo $WORK_DIR
-	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup  \
+	# Crear fichero cifrado del directorio /home/ferrete/privado
+	tar -cpf /home/ferrete/privado | gpg --passphrase-file /home/ferrete/privado/.gpgpass \
+	--batch --yes --no-use-agent --symmetric > /home/ferrete/privado.tar.gpg
+		# Backup del sistema, excluyendo $WORK_DIR
+	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup  --exclude=/home/ferrete/privado \
 	paquetes_instalados.txt vdabk.mbr \
 	/root /home \
 	/etc \
@@ -73,21 +76,28 @@ then
 	/var/lib/grafana /var/lib/prometheus /var/lib/postgresql /usr/local/sbin > $LOG_FILE
 	if [ "$?" -ne "0" ]
 	then
-		echo "Error al comprimir la copia final."
-		STATUS=400
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		echo "Error al crear la copia final."
+		STATUS=100
+		
 	else
 		echo "Copia COMPLETA creada correctamente."
-		STATUS=200
-		rm -f backup-completa-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		gzip -8f backup-completa-$HOSTNAME-$DATE.tar
+		if [ "$?" -e "0" ]
+		then
+			rm -f backup-completa-$HOSTNAME-$DATE.tar
+			psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		fi
 	fi
 	# Fichero indicando hora exacta de la copia para las copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
 
 else
+	# Crear fichero cifrado del directorio /home/ferrete/privado
+	tar -cpf /home/ferrete/privado -N ../date-last-backup.txt | gpg --passphrase-file /home/ferrete/privado/.gpgpass \
+	--batch --yes --no-use-agent --symmetric > /home/ferrete/privado.tar.gpg
+
 	# Copia diferencial respecto al día anterior
-	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt --exclude=/root/backup \
+	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt --exclude=/root/backup --exclude=/home/ferrete/privado \
 	paquetes_instalados.txt vdabk.mbr \
 	/root /home \
 	/etc \
@@ -102,9 +112,12 @@ else
 		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
 	else
 		echo "Copia DIFERENCIAL creada correctamente."
-		STATUS=200
-		rm -f backup-dif-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
+		gzip -8f backup-dif-$HOSTNAME-$DATE.tar
+		if [ "$?" -e "0" ]
+		then
+			rm -f backup-dif-$HOSTNAME-$DATE.tar
+			psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
+		fi
 	fi
 	# Fichero indicando hora exacta de la copia para las siguientes copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
