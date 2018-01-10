@@ -78,13 +78,15 @@ then
 	then
 		echo "Error al crear la copia final."
 		STATUS=100
-		
+
 	else
 		echo "Copia COMPLETA creada correctamente."
 		gzip -8f backup-completa-$HOSTNAME-$DATE.tar
 		if [ "$?" -e "0" ]
 		then
 			rm -f backup-completa-$HOSTNAME-$DATE.tar
+			# Enviar el fichero al deposito de backups
+			scp backup-completa-$HOSTNAME-$DATE.tar.gz backups@10.0.0.9:/home/backups/
 			psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
 		fi
 	fi
@@ -116,6 +118,8 @@ else
 		if [ "$?" -e "0" ]
 		then
 			rm -f backup-dif-$HOSTNAME-$DATE.tar
+			# Enviar el fichero al deposito de backups
+			scp backup-dif-$HOSTNAME-$DATE.tar.gz backups@10.0.0.9:/home/backups/
 			psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
 		fi
 	fi
