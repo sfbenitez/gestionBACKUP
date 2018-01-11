@@ -6,24 +6,25 @@
 # Todas las semanas se realizará una copia completa del sistema.
 # Los demás días se realizarán copias diferenciales partiendo de la última copia completa.
 # Directorios a respaldar por máquina.
-#  Mickey	Minnie	Donald
+#  Mickey               Minnie                  Donald
 # Directorio de usuarios
-# /root		/root		/root
-#	/home		/home		/home
+# /root                 /root                   /root
+# /home                 /home                   /home
 # Ficheros de configuración
-# /etc		/etc		/etc
+# /etc                  /etc                    /etc
 # Logs
-# /var/log		/var/log		/var/log
-# Binarios de usuarios
-# /usr/local	/usr/local	/usr/local
+# /var/log              /var/log                /var/log
+# Binarios de métricas
+# /usr/local/sbin	/usr/local/sbin         /usr/local/sbin
 # Específos de cada host
-# Subdominio DNS		Práctica hosting SRV		Servidor Web
-# /var/cache/bind		/srv		/var/www
-#	/var/lib/ldap		/var/www		-
-#	-		/var/cache/bind		-
-#	-		/var/lib/ldap		-
-#	-		/var/lib/grafana		-
-#	-		/var/lib/prometheus		-
+# Subdominio DNS        Práctica hosting SRV    Servidor Web
+# /var/cache/bind	/srv                    /var/www
+# /var/lib/ldap         /var/www
+# -                     /var/cache/bind
+# -                     /var/lib/ldap
+# -                     /var/lib/grafana
+# -                     /var/lib/prometheus
+
 
 # STATIC PARAMS
 : ${PGPASSFILE:=/root/.pgpass}		# passfile para postgresql 172.22.200.110:5432:db_backup:sergio.ferrete:passwd
