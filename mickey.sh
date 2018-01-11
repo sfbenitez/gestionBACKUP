@@ -6,38 +6,40 @@
 # Todas las semanas se realizará una copia completa del sistema.
 # Los demás días se realizarán copias diferenciales partiendo de la última copia completa.
 # Directorios a respaldar por máquina.
-#  Mickey							Minnie								Donald
+#  Mickey	Minnie	Donald
 # Directorio de usuarios
-# /root								/root									/root
-#	/home								/home									/home
+# /root		/root		/root
+#	/home		/home		/home
 # Ficheros de configuración
-# /etc								/etc									/etc
+# /etc		/etc		/etc
 # Logs
-# /var/log						/var/log							/var/log
+# /var/log		/var/log		/var/log
+# Binarios de usuarios
+# /usr/local	/usr/local	/usr/local
 # Específos de cada host
-# Subdominio DNS			Práctica hosting SRV  Servidor Web
-# /var/cache/bind			/srv									/var/www
-#	/var/lib/ldap				/var/www
-#											/var/cache/bind
-#											/var/lib/ldap
-#											/var/lib/grafana
-#											/var/lib/prometheus
+# Subdominio DNS		Práctica hosting SRV		Servidor Web
+# /var/cache/bind		/srv		/var/www
+#	/var/lib/ldap		/var/www		-
+#	-		/var/cache/bind		-
+#	-		/var/lib/ldap		-
+#	-		/var/lib/grafana		-
+#	-		/var/lib/prometheus		-
 
 # STATIC PARAMS
-: ${PGPASSFILE:=/root/.pgpass}										# passfile para postgresql
-: ${DATE:=$(date +'%Y-%m-%d')}             				# Variable para Fecha.
-: ${DAY:=$(date +'%a')}														# Variable para el día.
-: ${YESTERDAY:=$(date --date="yesterday" +'%d')}	# Variable para el día anterior.
-: ${MONTH:=$(date +'%b')}													# Variable para el mes.
-: ${TIME:=$(date +'%R')}                   				# Variable para Hora.
-: ${WORK_DIR:=/root/backup/$DATE}          				# Directorio de trabajo actual.
-: ${LOG_FILE:=/root/backup/$DATE/backup.log}			# Archivo de log.
-: ${ADMIN:=sergioferretebenitez@gmail.com} 				# Email de Administrador
+: ${PGPASSFILE:=/root/.pgpass}		# passfile para postgresql 172.22.200.110:5432:db_backup:sergio.ferrete:passwd
+: ${DATE:=$(date +'%Y-%m-%d')}		# Variable para Fecha.
+: ${DAY:=$(date +'%a')}		# Variable para el día.
+: ${YESTERDAY:=$(date --date="yesterday" +'%d')}		# Variable para el día anterior.
+: ${MONTH:=$(date +'%b')}		# Variable para el mes.
+: ${TIME:=$(date +'%R')}		# Variable para Hora.
+: ${WORK_DIR:=/root/backup/$DATE}		# Directorio de trabajo actual.
+: ${LOG_FILE:=/root/backup/$DATE/backup.log}		# Archivo de log.
+: ${ADMIN:=sergioferretebenitez@gmail.com}		# Email de Administrador
 : ${IPMICKEY:=172.22.200.108}
 
 
 # VARS
-STATUS:=200
+STATUS=200
 
 # Comprobando si existe el directorio de trabajo.
 if [ ! -d "$WORK_DIR" ] ;
@@ -47,6 +49,7 @@ then
 	then
 		echo "No se ha podido crear el directorio de trabajo."
 		exit 1
+	fi
 fi;
 
 # Cambiar al directorio
@@ -59,50 +62,71 @@ fi
 # Todos los Lunes de cada semana, copia completa.
 if [ "$DAY" == "Mon" ]
 then
-	# Borrar fichero .snap de la semana anterior anterior si existe.
-	rm -f ../*.snap
-	# Backup del sistema, excluyendo $WORK_DIR
-	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup -g ../Monday-$DATE.snap \
-		/root /home \
-		/etc \
-		/var/log \
-		/var/cache/bind /var/lib/ldap
-
-	# Añadir lista de paquetes instalados
+	# lista de paquetes instalados y mbr
 	dpkg --get-selections > paquetes_instalados.txt
-	tar -rvf backup-completa-$HOSTNAME-$DATE.tar paquetes_instalados.txt
-	gzip -8f backup-completa-$HOSTNAME-$DATE.tar
+	dd if=/dev/vda of=vdabk.mbr count=1 bs=512
+	# Crear fichero cifrado del directorio /home/ferrete/privado
+	tar -cpf /home/ferrete/privado | gpg --passphrase-file /home/ferrete/privado/.gpgpass \
+	--batch --yes --no-use-agent --symmetric > /home/ferrete/privado.tar.gpg
+		# Backup del sistema, excluyendo $WORK_DIR
+	tar -cvpf backup-completa-$HOSTNAME-$DATE.tar --exclude=/root/backup  --exclude=/home/ferrete/privado/ \
+	paquetes_instalados.txt vdabk.mbr \
+	/root /home \
+	/etc \
+	/var/log \
+	/var/cache/bind /var/lib/ldap /usr/local/bin /usr/local/sbin > $LOG_FILE
 	if [ "$?" -ne "0" ]
 	then
-		echo "Error al comprimir la copia final."
-		STATUS=400
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		echo "Error al crear la copia final."
+		STATUS=100
+
 	else
 		echo "Copia COMPLETA creada correctamente."
-		STATUS=200
-		rm -f backup-completa-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+		gzip -8f backup-completa-$HOSTNAME-$DATE.tar
+		if [ "$?" == "0" ]
+		then
+			# Enviar el fichero al deposito de backups
+			scp backup-completa-$HOSTNAME-$DATE.tar.gz backups@10.0.0.5:/home/backups
+			if [ "$?" == "0" ]
+			then
+				rm backup-completa-$HOSTNAME-$DATE.tar.gz
+				psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia completa de $HOSTNAME', '$STATUS', 'Automatica')"
+			fi
+		fi
 	fi
 	# Fichero indicando hora exacta de la copia para las copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
 
 else
+	# Crear fichero cifrado del directorio /home/ferrete/privado
+	tar -cpf /home/ferrete/privado -N ../date-last-backup.txt | gpg --passphrase-file /home/ferrete/privado/.gpgpass \
+	--batch --yes --no-use-agent --symmetric > /home/ferrete/privado.tar.gpg
+
 	# Copia diferencial respecto al día anterior
-	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt --exclude=/root/backup \
-		/root /home \
-		/etc \
-		/var/log \
-		/var/cache/bind /var/lib/ldap
-	if [ "$?" -ne "0" ]
+	tar -cvpf backup-dif-$HOSTNAME-$DATE.tar -N ../date-last-backup.txt --exclude=/root/backup --exclude=/home/ferrete/privado/ \
+	/root /home \
+	/etc \
+	/var/log \
+	/var/cache/bind /var/lib/ldap /usr/local/bin /usr/local/sbin > $LOG_FILE
+
+	if [ "$?" == "0" ]
 	then
 		echo "Error al crear la copia final."
 		STATUS=100
 		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
 	else
 		echo "Copia DIFERENCIAL creada correctamente."
-		STATUS=200
-		rm -f backup-dif-$HOSTNAME-$DATE.tar
-		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
+		gzip -8f backup-dif-$HOSTNAME-$DATE.tar
+		if [ "$?" == "0" ]
+		then
+			# Enviar el fichero al deposito de backups
+			scp backup-dif-$HOSTNAME-$DATE.tar.gz backups@10.0.0.5:/home/backups
+			if [ "$?" == "0" ]
+			then
+				rm backup-dif-$HOSTNAME-$DATE.tar.gz
+				psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMICKEY','backup-dif-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
+			fi
+		fi
 	fi
 	# Fichero indicando hora exacta de la copia para las siguientes copias diferenciales
 	date > ../date-last-backup.txt # /root/backup
