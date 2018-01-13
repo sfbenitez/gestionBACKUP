@@ -77,7 +77,7 @@ then
 	/var/log \
 	/var/www /usr/local/bin \
 	/usr/local/sbin > $LOG_FILE
-	if [ "$?" -ne "0" ]
+	if [ "$?" != "0" ]
 	then
 		echo "Error al crear la copia final."
 		STATUS=100
@@ -112,7 +112,7 @@ else
 	/var/www /usr/local/bin \
 	/usr/local/sbin > $LOG_FILE
 
-	if [ "$?" == "0" ]
+	if [ "$?" != "0" ]
 	then
 		echo "Error al crear la copia final."
 		STATUS=100

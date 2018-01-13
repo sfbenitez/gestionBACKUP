@@ -76,11 +76,11 @@ then
 	/var/log \
 	/var/cache/bind /var/lib/ldap /srv /var/www /usr/local/bin \
 	/var/lib/grafana /var/lib/prometheus /var/lib/postgresql /usr/local/sbin > $LOG_FILE
-	if [ "$?" -ne "0" ]
+	if [ "$?" != "0" ]
 	then
 		echo "Error al crear la copia final."
 		STATUS=100
-
+		psql -h 172.22.200.110 -U sergio.ferrete -d db_backup -c "INSERT INTO BACKUPS (backup_user, backup_host, backup_label, backup_description, backup_status, backup_mode) values ('sergio.ferrete', '$IPMINNIE','backup-completa-$HOSTNAME-$DATE.tar.gz','Copia diferencial de $HOSTNAME', '$STATUS', 'Automatica')"
 	else
 		echo "Copia COMPLETA creada correctamente."
 		gzip -8f backup-completa-$HOSTNAME-$DATE.tar
@@ -111,7 +111,7 @@ else
 	/var/cache/bind /var/lib/ldap /srv /var/www /usr/local/bin \
 	/var/lib/grafana /var/lib/prometheus /var/lib/postgresql /usr/local/sbin > $LOG_FILE
 
-	if [ "$?" == "0" ]
+	if [ "$?" != "0" ]
 	then
 		echo "Error al crear la copia final."
 		STATUS=100
